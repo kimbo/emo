@@ -1,0 +1,10 @@
+# comment
+
+num n = 1;
+fun x(num x, num y) num {
+    whi(n < 10) {
+        n = n + 1;
+    }
+    ret n;
+}
+str s = "what the";
