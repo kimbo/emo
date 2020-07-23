@@ -1,20 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <string.h>
 
 #include "emo.h"
 
 #define DEBUG 1
-#define NEXT(f, c) *c = getc(f); if (*c == EOF) { goto cleanup; }
-#define SKIPWHITESPACE(f, c) while (1) {\
-	*c = getc(f);\
-	if (*c == EOF) {\
-		goto cleanup;\
-	}\
-	if (isspace(*c)) {\
-		continue;\
-	}\
-}
+
 const char *program_name = "emo";
 
 void usage_and_quit(int code)
@@ -38,8 +30,23 @@ static char c;
 static char buf[TOKENBUFSIZE];
 static int tokenNumber;
 static token *tokens[MAXNUMBEROFTOKENS];
+static FILE *f;
 
-void advance(FILE *f) {
+void fatal(const char *msg) {
+	fprintf(stderr, "[FATAL] line %s:%d: %s", currentLine, charCount, msg);
+	exit(EXIT_FAILURE);
+}
+
+void back() {
+	int i = putc(c, f);
+	if (i == -1) {
+		perror("putc");
+		exit(EXIT_FAILURE);
+	}
+	currentLine--;
+}
+
+void forward() {
 	c = getc(f);
 	buf[charCount++] = c;
 	if (c == '\n') {
@@ -49,16 +56,65 @@ void advance(FILE *f) {
 
 void saveCurrentToken() {
 	token *t = newToken();
-	t->position = currentLine;
+	t->lineno = currentLine;
 	t->tokentype = currentTokenType;
 	memcpy(t->value, &buf[0], charCount);
 	tokens[tokenNumber++] = t;
 }
 
-void init() {
+void init(char *fname) {
 	currentLine = 1;
 	charCount = 0;
 	tokenNumber = 0;
+	FILE *f = fopen(fname, "r");
+	if (f == NULL) {
+		perror("fopen");
+		exit(EXIT_FAILURE);
+	}
+}
+
+void lexComment() {
+	currentTokenType = COMMENT;
+	while (c != '\n' && c != EOF) {
+		forward();
+	}
+	// don't want to save newline or EOF in comment
+	charCount--;
+	currentLine--;
+	saveCurrentToken();
+	currentLine++;
+}
+
+void lexRawString() {
+	while (c != '\n' && c != EOF && c != '"') {
+		forward();
+	}
+	if (c == '\n') {
+		fatal("unterminated string caused by newline");
+	}
+	if (c == EOF) {
+		fatal("unterminated string caused by end of file");
+	}
+	currentTokenType = RAWSTRING;
+	saveCurrentToken();
+}
+
+void lexEmoji() {
+	while (c != '\n' && c != EOF && c != ':') {
+		forward();
+	}
+	if (c == '\n') {
+		fatal("unterminated emoji caused by newline");
+	}
+	if (c == EOF) {
+		fatal("unterminated emoji caused by end of file");
+	}
+	currentTokenType = EMOJI;
+	saveCurrentToken();
+}
+
+void lexIdentifierOrKeyword() {
+
 }
 
 int main(int argc, char *argv[])
@@ -66,86 +122,87 @@ int main(int argc, char *argv[])
 	if (argc < 2) {
 		usage_and_quit(1);
 	}
-	FILE *f = fopen(argv[1], "r");
-	if (f == NULL) {
-		perror("fopen");
-		exit(1);
-	}
-	debug("beginning to read file");
+	init(argv[1]);
+	debug("lexing...");
 
 	while (c != EOF) {
-		c = getc(f);
-		if (isdigit(c)) {
-			// read number
-		} else if (isalpha(c)) {
-			// letter
-			switch (c) {
-			case 'f':
-				// check for fun(ction)
-				NEXT(f, &c);
-				if (c == 'u') {
-					NEXT(f, &c);
-					if (c == 'n') {
-						NEXT(f, &c);
-						if (isspace(c)) {
-							// fun(ction)
-							break;
-						} else {
+		forward();
+		switch(c) {
+        case '(':
+			currentTokenType = OPENPAREN;
+			saveCurrentToken();
+			break;
+		case ')':
+			currentTokenType = CLOSEPAREN;
+			saveCurrentToken();
+			break;
+		case '{':
+			currentTokenType = OPENBRACE;
+			saveCurrentToken();
+			break;
+		case '}':
+			currentTokenType = CLOSEBRACE;
+			saveCurrentToken();
+			break;
+		case ',':
+			currentTokenType = COMMA;
+			saveCurrentToken();
+			break;
+		case '=':
+			currentTokenType = EQUALS;
+			saveCurrentToken();
+			break;
+		case '+':
+			currentTokenType = ADD;
+			saveCurrentToken();
+			break;
+		case '-':
+			currentTokenType = SUBTRACT;
+			saveCurrentToken();
+			break;
+		case '*':
+			currentTokenType = MULTIPLY;
+			saveCurrentToken();
+			break;
+		case '/':
+			currentTokenType = DIVIDE;
+			saveCurrentToken();
+			break;
+		case '%':
+			currentTokenType = MODULO;
+			saveCurrentToken();
+			break;
 
-						}
-					} else {
+		/* skip whitespace */
+		case '\t':
+		case '\n':
+		case ' ':
+			break;
 
-					}
-				} else {
-
-				}
+		case '#':
+			lexComment();
+			break;
+		case '"':
+			lexRawString();
+			break;
+		case ':':
+			lexEmoji();
+			break;
+		default:
+			if (isalnum(c) || c == '_') {
+				lexIdentifierOrKeyword();
 				break;
-			case 'i':
-				// check for if
-				c = getc(f);
-				if (c == 'f') {
-					c = getc(f);
-				}
-				break;
-			case 'n':
-				// check for num(ber)
-				c = getc(f);
-				break;
-			case 's':
-				// check for str(ing)
-				c = getc(f);
-
-				break;
-			case 'w':
-				// check for whi(le)
-				break;
-			case ';':
-				break;
-			default:
-				// identifier?
-				break;
-			}
-		} else {
-			// something else
-			token *t = findOneCharToken(c);
-			if (t != NULL) {
-				t->position = position;
-			}
-			switch (c) {
-			case '#':
-				// read comment
-				while (1) {
-
-				}
-				break;
-			case EOF:
-				goto cleanup;
-				break;
-			default:
+			} else {
+				currentTokenType = UNKNOWN;
+				saveCurrentToken();
 				break;
 			}
 		}
+		memset(buf, 0, TOKENBUFSIZE);
+		charCount = 0;
 	}
+	currentTokenType = EOF;
+	saveCurrentToken();
 	cleanup:
 		debug("cleaning up");
 		fclose(f);

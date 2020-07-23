@@ -16,6 +16,7 @@ enum TOKENTYPE {
     NUMBER,
     RAWSTRING,
     COMMENT,
+    EMOJI,
 
     /* tokens with three characters */
     STR,
@@ -28,7 +29,6 @@ enum TOKENTYPE {
     IF,
 
     /* one character tokens */
-    SINGLEQUOTE,
     OPENPAREN,
     CLOSEPAREN,
     OPENBRACE,
@@ -51,7 +51,7 @@ enum TOKENTYPE {
 
 struct token {
     enum TOKENTYPE tokentype;
-    int position;
+    int lineno;
     char *value;
 };
 typedef struct token token;
@@ -59,7 +59,7 @@ typedef struct token token;
 token *newToken() {
     token *t = malloc(sizeof(token *));
     t->tokentype = UNKNOWN;
-    t->position = POSITION_UNSPEC;
+    t->lineno = POSITION_UNSPEC;
     t->value = malloc(sizeof(char) * TOKENBUFSIZE);
     return t;
 }
@@ -104,72 +104,6 @@ static const token oneCharTokens[] = {
     {EQUALS, POSITION_UNSPEC, ","},
     {COMMA, POSITION_UNSPEC, ","},
     {SEMICOLON, POSITION_UNSPEC, ";"},
-    {SINGLEQUOTE, POSITION_UNSPEC, "'"},
 };
-
-token *findTokenWithGivenLength(char *s, int len) {
-
-}
-
-token *findThreeCharToken(char *s) {
-    token *start = threeCharTokens;
-    token *end = start + sizeof(threeCharTokens) / sizeof(threeCharTokens[0]);
-    for (; start < end; start++) {
-        if (strstr(s, start->value) == 0) {
-            return start;
-        }
-    }
-    return NULL;
-}
-
-token *findOneCharToken(char c) {
-    token *start = oneCharTokens;
-    token *end = start + sizeof(oneCharTokens)/sizeof(oneCharTokens[0]);
-    for (; start < end; start++) {
-        if (c == start->value) {
-            return start;
-        }
-    }
-    return NULL;
-}
-
-char skipWhitespace(FILE *f) {
-    char c;
-    while (1) {
-        c = getc(f);
-        if (!isspace(c)) {
-            return c;
-        }
-    }
-}
-
-token *readNextToken(FILE *f) {
-    char c;
-    char buf[TOKENBUFSIZE];
-    memset(buf, 0, TOKENBUFSIZE);
-    int pos = 0;
-    while (1) {
-        c = skipWhitespace(f);
-        if (c == EOF) {
-            return NULL;
-        }
-
-        token *t = findOneCharToken(c);
-        if (t != NULL && pos == 0) {
-            return t;
-        } else if (t != NULL && pos > 0) {
-            putc(c, f);
-            t = newToken();
-            t->position = pos;
-            memcpy(t->value, );
-        }
-
-        buf[pos++] = c;
-
-        if (pos == 3) {
-
-        }
-    }
-}
 
 #endif /* EMO_H */
