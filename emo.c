@@ -33,21 +33,22 @@ static token *tokens[MAXNUMBEROFTOKENS];
 static FILE *f;
 
 void fatal(const char *msg) {
-	fprintf(stderr, "[FATAL] line %s:%d: %s", currentLine, charCount, msg);
+	fprintf(stderr, "[FATAL] line %d:%d: %s", currentLine, charCount, msg);
 	exit(EXIT_FAILURE);
 }
 
 void back() {
-	int i = putc(c, f);
+	int i = ungetc(c, f);
 	if (i == -1) {
-		perror("putc");
+		perror("ungetc");
 		exit(EXIT_FAILURE);
 	}
-	currentLine--;
+	charCount--;
+	buf[charCount] = '\0';
 }
 
 void forward() {
-	c = getc(f);
+	c = fgetc(f);
 	buf[charCount++] = c;
 	if (c == '\n') {
 		currentLine++;
@@ -58,15 +59,16 @@ void saveCurrentToken() {
 	token *t = newToken();
 	t->lineno = currentLine;
 	t->tokentype = currentTokenType;
-	memcpy(t->value, &buf[0], charCount);
+	memcpy(t->value, buf, charCount);
 	tokens[tokenNumber++] = t;
+	fprintf(stderr, "%s on line %d: %s\n", tokenToString(currentTokenType), t->lineno, t->value);
 }
 
 void init(char *fname) {
 	currentLine = 1;
 	charCount = 0;
 	tokenNumber = 0;
-	FILE *f = fopen(fname, "r");
+	f = fopen(fname, "r");
 	if (f == NULL) {
 		perror("fopen");
 		exit(EXIT_FAILURE);
@@ -74,21 +76,24 @@ void init(char *fname) {
 }
 
 void lexComment() {
-	currentTokenType = COMMENT;
 	while (c != '\n' && c != EOF) {
 		forward();
 	}
-	// don't want to save newline or EOF in comment
-	charCount--;
-	currentLine--;
-	saveCurrentToken();
-	currentLine++;
+	back();
+	currentTokenType = COMMENT;
+	if (c == '\n') {
+		currentLine--;
+		saveCurrentToken();
+		currentLine++;
+	} else {
+		saveCurrentToken();
+	}
 }
 
 void lexRawString() {
-	while (c != '\n' && c != EOF && c != '"') {
+	do {
 		forward();
-	}
+	} while (c != '\n' && c != EOF && c != '"');
 	if (c == '\n') {
 		fatal("unterminated string caused by newline");
 	}
@@ -96,25 +101,65 @@ void lexRawString() {
 		fatal("unterminated string caused by end of file");
 	}
 	currentTokenType = RAWSTRING;
-	saveCurrentToken();
+	if (c == '\n') {
+		currentLine--;
+		saveCurrentToken();
+		currentLine++;
+	} else {
+		saveCurrentToken();
+	}
 }
 
 void lexEmoji() {
-	while (c != '\n' && c != EOF && c != ':') {
+	do {
 		forward();
-	}
+	} while (isalnum(c));
 	if (c == '\n') {
 		fatal("unterminated emoji caused by newline");
 	}
 	if (c == EOF) {
 		fatal("unterminated emoji caused by end of file");
 	}
+	if (c != ':') {
+		fatal("unterminated emoji caused by invalid character");
+	}
 	currentTokenType = EMOJI;
-	saveCurrentToken();
+	if (c == '\n') {
+		currentLine--;
+		saveCurrentToken();
+		currentLine++;
+	} else {
+		saveCurrentToken();
+	}
 }
 
 void lexIdentifierOrKeyword() {
-
+	while (isalnum(c) || c == '_') {
+		forward();
+	}
+	back();
+	if (strcmp(buf, "fun") == 0) {
+		currentTokenType = KW_FUN;
+	} else if (strcmp(buf, "str") == 0) {
+		currentTokenType = KW_STR;
+	} else if (strcmp(buf, "if") == 0) {
+		currentTokenType = KW_IF;
+	} else if (strcmp(buf, "whi") == 0) {
+		currentTokenType = KW_WHI;
+	} else if (strcmp(buf, "num") == 0) {
+		currentTokenType = KW_NUM;
+	} else if (strcmp(buf, "ret") == 0) {
+		currentTokenType = KW_RET;
+	} else {
+		currentTokenType = IDENTIFIER;
+	}
+	if (c == '\n') {
+		currentLine--;
+		saveCurrentToken();
+		currentLine++;
+	} else {
+		saveCurrentToken();
+	}
 }
 
 int main(int argc, char *argv[])
@@ -127,6 +172,9 @@ int main(int argc, char *argv[])
 
 	while (c != EOF) {
 		forward();
+		if (c == EOF) {
+			break;
+		}
 		switch(c) {
         case '(':
 			currentTokenType = OPENPAREN;
@@ -172,6 +220,18 @@ int main(int argc, char *argv[])
 			currentTokenType = MODULO;
 			saveCurrentToken();
 			break;
+		case ';':
+			currentTokenType = SEMICOLON;
+			saveCurrentToken();
+			break;
+		case '>':
+			currentTokenType = GREATERTHAN;
+			saveCurrentToken();
+			break;
+		case '<':
+			currentTokenType = LESSTHAN;
+			saveCurrentToken();
+			break;
 
 		/* skip whitespace */
 		case '\t':
@@ -200,9 +260,15 @@ int main(int argc, char *argv[])
 		}
 		memset(buf, 0, TOKENBUFSIZE);
 		charCount = 0;
+		currentTokenType = UNKNOWN;
 	}
-	currentTokenType = EOF;
+	currentTokenType = TOKEN_EOF;
+	// avoid printing garbage
+	buf[0] = '\0';
+	charCount = 1;
+
 	saveCurrentToken();
+
 	cleanup:
 		debug("cleaning up");
 		fclose(f);

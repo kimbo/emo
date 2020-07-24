@@ -1,5 +1,6 @@
 # comment
 
+:cry: "why do I have to do this?"
 num n = 1;
 fun x(num x, num y) num {#other comment
     whi(n < 10) {
@@ -7,8 +8,8 @@ fun x(num x, num y) num {#other comment
     }
     ret n;
 }
-str s = "what the";
+str s = "what the " + :sob:;
 
-# smile comment :smile:
+# some other comment
 
-s = s + " :sob:";
+s = s;
