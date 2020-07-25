@@ -38,8 +38,7 @@ void fatal(const char *msg) {
 }
 
 void back() {
-	int i = ungetc(c, f);
-	if (i == -1) {
+	if (c != EOF && ungetc(c, f) == -1) {
 		perror("ungetc");
 		exit(EXIT_FAILURE);
 	}

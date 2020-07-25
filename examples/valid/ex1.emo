@@ -13,3 +13,7 @@ str s = "what the " + :sob:;
 # some other comment
 
 s = s;
+
+num y = x(1, 2)
+
+:sob: y
