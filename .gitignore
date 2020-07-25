@@ -1,1 +1,11 @@
 /emo
+
+/.vscode/
+
+# object files
+*.o
+
+# gcov test coverage files
+*.gcov
+*.gcno
+*.gcda
