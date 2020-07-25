@@ -1,0 +1,25 @@
+name: Build, Test, and Coverage
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: make
+      run: make
+    - name: Run tests
+      run: make check
+    - name: Test coverage
+      run: make coverage
+    - name: Report coverage
+      run: bash <(curl -s https://codecov.io/bash) 
