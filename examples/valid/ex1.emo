@@ -16,4 +16,6 @@ s = s;
 
 num y = x(1, 2)
 
-:sob: y
+if (y > 1) {
+    :sob: y
+}
