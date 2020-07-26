@@ -1,6 +1,6 @@
 # emo :joy: The Emotional Language :sob:
 
-![Build](https://github.com/kimbo/emo/workflows/Build,%20Test,%20and%20Coverage/badge.svg)
+![build](https://github.com/kimbo/emo/workflows/build/badge.svg)
 [![codecov](https://codecov.io/gh/kimbo/emo/branch/master/graph/badge.svg)](https://codecov.io/gh/kimbo/emo)
 
 In school, I took a class where we wrote a lexer and a parser for [datalog](https://en.wikipedia.org/wiki/Datalog) to do relational algebra type stuff.
