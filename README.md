@@ -9,7 +9,7 @@ If I was going to write something that could interpret and execute a language, I
 
 So I decided to try and write my own programming language called `emo`.
 I'm not super set on the design yet, but I'm trying to keep it simple.
-The main idea is to have a simple language with "enhance emoji support", meaning that emojis are built in to the standard library.
+The main idea is to have a simple language with "enhanced emoji support", meaning that emojis are built in to the standard library.
 I realize I could just build a library in another language that would do something like this, but I wouldn't learn nearly as much.
 Besides, who doesn't want to write `emo` code?
 
